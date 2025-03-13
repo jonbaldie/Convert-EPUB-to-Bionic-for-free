@@ -26,39 +26,46 @@ def convert_to_bionic_str(soup: BeautifulSoup, s: str):
     - Words > 4 letters: first 40% of letters are bold
     """
     new_parent = soup.new_tag("span")
-    words = re.findall(r'\w+', s)
+    tokens = re.findall(r'\S+', s)  # Change back to \S+ to include punctuation
     
-    for word in words:
-        # Skip empty words
-        if not word:
+    for token in tokens:
+        # Skip empty tokens
+        if not token:
             continue
             
-        # Calculate how many letters to make bold based on word length
-        word_length = len(word)
-        if word_length <= 3:
-            # For words with 0-3 letters, bold the first letter
-            bold_count = 1
-            first_half, second_half = word[:bold_count], word[bold_count:]
+        # Find the first alphanumeric sequence to determine how much to bold
+        alpha_match = re.search(r'(\w+)', token)
+        
+        if alpha_match:
+            # Get the alphanumeric part and its position
+            alpha = alpha_match.group(1)
+            alpha_start = token.find(alpha)
+            
+            # Calculate bold count based on the alphanumeric part's length
+            alpha_length = len(alpha)
+            if alpha_length <= 3:
+                bold_count = 1
+            elif alpha_length == 4:
+                bold_count = 2
+            else:
+                bold_count = max(1, int(alpha_length * 0.4))
+                
+            # Bold the appropriate part of the token
+            prefix = token[:alpha_start]
+            bold_part = token[alpha_start:alpha_start + bold_count]
+            suffix = token[alpha_start + bold_count:]
+            
+            if prefix:
+                new_parent.append(soup.new_string(prefix))
+                
             b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(first_half))
+            b_tag.append(soup.new_string(bold_part))
             new_parent.append(b_tag)
-            new_parent.append(soup.new_string(second_half + " "))
-        elif word_length == 4:
-            # For words with 4 letters, bold the first two letters
-            bold_count = 2
-            first_half, second_half = word[:bold_count], word[bold_count:]
-            b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(first_half))
-            new_parent.append(b_tag)
-            new_parent.append(soup.new_string(second_half + " "))
+            
+            new_parent.append(soup.new_string(suffix + " "))
         else:
-            # For words > 4 letters, bold the first 40% of letters
-            bold_count = max(1, int(word_length * 0.4))
-            first_half, second_half = word[:bold_count], word[bold_count:]
-            b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(first_half))
-            new_parent.append(b_tag)
-            new_parent.append(soup.new_string(second_half + " "))
+            # This token has no alphanumeric part (e.g., punctuation only)
+            new_parent.append(soup.new_string(token + " "))
             
     return new_parent
 
