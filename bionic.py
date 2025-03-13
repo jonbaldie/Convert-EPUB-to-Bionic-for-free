@@ -27,7 +27,7 @@ def convert_to_bionic_str(soup: BeautifulSoup, s: str):
     """
     new_parent = soup.new_tag("span")
     # Split by whitespace and keep punctuation attached to words
-    words = re.findall(r'\W+', s)
+    words = re.findall(r'\S+', s)
     
     for word in words:
         # Skip empty words
