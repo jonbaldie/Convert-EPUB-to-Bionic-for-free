@@ -24,52 +24,70 @@ def convert_to_bionic_str(soup: BeautifulSoup, s: str):
     - Words ≤ 3 letters: first letter is bold
     - Words = 4 letters: first two letters are bold
     - Words > 4 letters: first 40% of letters are bold
+    This version treats dash characters (and similar ones) as word boundaries.
     """
     new_parent = soup.new_tag("span")
-    
-    # Split the text into chunks that preserve all characters
-    # This will match text chunks and preserve whitespace
+
+    # First, split on whitespace to preserve spaces.
     chunks = re.split(r'(\s+)', s)
-    
+
     for chunk in chunks:
-        # Skip empty chunks
         if not chunk:
             continue
-            
-        # If it's whitespace, just add it
+        
+        # If the chunk is whitespace, add it directly.
         if chunk.isspace():
             new_parent.append(soup.new_string(chunk))
             continue
-            
-        # For non-space chunks, find how many letters to make bold
-        # Count only alphanumeric characters for bold calculation
-        alpha_count = sum(1 for c in chunk if c.isalnum())
         
-        if alpha_count <= 3:
-            bold_count = 1
-        elif alpha_count == 4:
-            bold_count = 2
-        else:
-            bold_count = max(1, int(alpha_count * 0.4))
-            
-        # Now make the first N characters bold, counting only alphanumerics
-        bold_chars = 0
-        for i, char in enumerate(chunk):
-            if char.isalnum():
-                bold_chars += 1
-                if bold_chars > bold_count:
-                    # We've bolded enough characters, add remaining as plain text
-                    b_tag = soup.new_tag("b")
-                    b_tag.append(soup.new_string(chunk[:i]))
-                    new_parent.append(b_tag)
-                    new_parent.append(soup.new_string(chunk[i:]))
-                    break
-        else:
-            # If we get here, all characters should be bold
-            b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(chunk))
-            new_parent.append(b_tag)
-            
+        # For non-space chunks, further split on dash characters.
+        # The regex will capture groups of dashes (or similar characters) as separate tokens.
+        subchunks = re.split(r'([-–—]+)', chunk)
+        
+        for subchunk in subchunks:
+            if not subchunk:
+                continue
+                
+            # If the token is only made of dashes (or similar), leave it untouched.
+            if re.fullmatch(r'[-–—]+', subchunk):
+                new_parent.append(soup.new_string(subchunk))
+            else:
+                # Otherwise, process this token with the bionic transformation.
+                # Count only alphanumeric characters for determining the bold count.
+                alpha_count = sum(1 for c in subchunk if c.isalnum())
+                
+                if alpha_count == 0:
+                    # If there are no alphanumerics, just add the token as is.
+                    new_parent.append(soup.new_string(subchunk))
+                else:
+                    if alpha_count <= 3:
+                        bold_count = 1
+                    elif alpha_count == 4:
+                        bold_count = 2
+                    else:
+                        bold_count = max(1, int(alpha_count * 0.4))
+                    
+                    bold_chars = 0
+                    # Walk through the characters; when we've passed the bold_count for alphanumerics,
+                    # split the token so that the first part will be bold.
+                    for i, char in enumerate(subchunk):
+                        if char.isalnum():
+                            bold_chars += 1
+                            if bold_chars > bold_count:
+                                # Create the bold-tag for the part that should be bold.
+                                b_tag = soup.new_tag("b")
+                                b_tag.append(soup.new_string(subchunk[:i]))
+                                new_parent.append(b_tag)
+                                # Append the rest as plain text.
+                                new_parent.append(soup.new_string(subchunk[i:]))
+                                break
+                    else:
+                        # If the loop is not broken (all alphanumerics are within bold_count),
+                        # then everything gets bolded.
+                        b_tag = soup.new_tag("b")
+                        b_tag.append(soup.new_string(subchunk))
+                        new_parent.append(b_tag)
+                    
     return new_parent
 
 def convert_to_bionic(content: str):
