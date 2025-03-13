@@ -24,33 +24,41 @@ def convert_to_bionic_str(soup: BeautifulSoup, s: str):
     - Words ≤ 3 letters: first letter is bold
     - Words = 4 letters: first two letters are bold
     - Words > 4 letters: first 40% of letters are bold
+    
+    Uses a character-by-character approach to precisely identify word boundaries.
     """
     new_parent = soup.new_tag("span")
-    # Split by word boundaries and keep punctuation attached to words
-    words = re.findall(r'\b\w+\b', s)
     
-    for word in words:
-        # Calculate how many letters to make bold based on word length
-        word_length = len(word)
-        if word_length <= 3:
-            # For words with 1-3 letters, bold the first letter
-            bold_count = 1
-        elif word_length == 4:
-            # For words with 4 letters, bold the first two letters
-            bold_count = 2
+    i = 0
+    while i < len(s):
+        # If current character is a word character, process the whole word
+        if s[i].isalnum() or s[i] == '_':
+            # Find the boundaries of this word
+            start = i
+            while i < len(s) and (s[i].isalnum() or s[i] == '_'):
+                i += 1
+            word = s[start:i]
+            
+            # Apply bolding rules based on word length
+            word_length = len(word)
+            if word_length <= 3:
+                bold_count = 1
+            elif word_length == 4:
+                bold_count = 2
+            else:
+                bold_count = max(1, int(word_length * 0.4))
+            
+            # Add the bolded portion
+            b_tag = soup.new_tag("b")
+            b_tag.append(soup.new_string(word[:bold_count]))
+            new_parent.append(b_tag)
+            
+            # Add the rest of the word
+            new_parent.append(soup.new_string(word[bold_count:]))
         else:
-            # For words > 4 letters, bold the first 40% of letters
-            bold_count = max(1, int(word_length * 0.4))
-        
-        first_half, second_half = word[:bold_count], word[bold_count:]
-        b_tag = soup.new_tag("b")
-        b_tag.append(soup.new_string(first_half))
-        new_parent.append(b_tag)
-        new_parent.append(soup.new_string(second_half))
-    
-    # Append remaining non-word characters
-    remaining_chars = re.sub(r'\b\w+\b', '', s)
-    new_parent.append(soup.new_string(remaining_chars))
+            # Preserve non-word characters exactly as they are
+            new_parent.append(soup.new_string(s[i]))
+            i += 1
     
     return new_parent
 
