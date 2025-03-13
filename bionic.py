@@ -26,8 +26,7 @@ def convert_to_bionic_str(soup: BeautifulSoup, s: str):
     - Words > 4 letters: first 40% of letters are bold
     """
     new_parent = soup.new_tag("span")
-    # Split by whitespace and keep punctuation attached to words
-    words = re.findall(r'\S+', s)
+    words = re.findall(r'\w+', s)
     
     for word in words:
         # Skip empty words
