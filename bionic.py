@@ -26,44 +26,32 @@ def convert_to_bionic_str(soup: BeautifulSoup, s: str):
     - Words > 4 letters: first 40% of letters are bold
     """
     new_parent = soup.new_tag("span")
-    # Split by whitespace and keep punctuation attached to words
-    words = re.findall(r'\S+', s)
+    # Split by word boundaries and keep punctuation attached to words
+    words = re.findall(r'\b\w+\b', s)
     
     for word in words:
-        # Skip empty words
-        if not word:
-            continue
-            
         # Calculate how many letters to make bold based on word length
         word_length = len(word)
-        if word_length <= 1:
-            # For single character words, don't apply bolding
-            new_parent.append(soup.new_string(word + " "))
-        elif word_length <= 3:
-            # For words with 2-3 letters, bold the first letter
+        if word_length <= 3:
+            # For words with 1-3 letters, bold the first letter
             bold_count = 1
-            first_half, second_half = word[:bold_count], word[bold_count:]
-            b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(first_half))
-            new_parent.append(b_tag)
-            new_parent.append(soup.new_string(second_half + " "))
         elif word_length == 4:
             # For words with 4 letters, bold the first two letters
             bold_count = 2
-            first_half, second_half = word[:bold_count], word[bold_count:]
-            b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(first_half))
-            new_parent.append(b_tag)
-            new_parent.append(soup.new_string(second_half + " "))
         else:
             # For words > 4 letters, bold the first 40% of letters
             bold_count = max(1, int(word_length * 0.4))
-            first_half, second_half = word[:bold_count], word[bold_count:]
-            b_tag = soup.new_tag("b")
-            b_tag.append(soup.new_string(first_half))
-            new_parent.append(b_tag)
-            new_parent.append(soup.new_string(second_half + " "))
-            
+        
+        first_half, second_half = word[:bold_count], word[bold_count:]
+        b_tag = soup.new_tag("b")
+        b_tag.append(soup.new_string(first_half))
+        new_parent.append(b_tag)
+        new_parent.append(soup.new_string(second_half))
+    
+    # Append remaining non-word characters
+    remaining_chars = re.sub(r'\b\w+\b', '', s)
+    new_parent.append(soup.new_string(remaining_chars))
+    
     return new_parent
 
 def convert_to_bionic(content: str):
